@@ -1,0 +1,11 @@
+D:\Projects\EasySync\bin\Debug\EasySync.exe.config
+D:\Projects\EasySync\bin\Debug\EasySync.exe
+D:\Projects\EasySync\bin\Debug\EasySync.pdb
+D:\Projects\EasySync\obj\Debug\EasySync.csproj.AssemblyReference.cache
+D:\Projects\EasySync\obj\Debug\EasySync.csproj.SuggestedBindingRedirects.cache
+D:\Projects\EasySync\obj\Debug\EasySync.Properties.Resources.resources
+D:\Projects\EasySync\obj\Debug\EasySync.csproj.GenerateResource.cache
+D:\Projects\EasySync\obj\Debug\EasySync.csproj.CoreCompileInputs.cache
+D:\Projects\EasySync\obj\Debug\EasySync.exe
+D:\Projects\EasySync\obj\Debug\EasySync.pdb
+D:\Projects\EasySync\obj\Debug\EasySync.Form1.resources
