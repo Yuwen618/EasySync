@@ -1,0 +1,16 @@
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Default state -->
+    <item android:state_pressed="false" android:state_focused="false">
+        <color android:color="@android:color/white" />
+    </item>
+
+    <!-- Pressed state -->
+    <item android:state_pressed="true">
+        <color android:color="@android:color/holo_blue_light" />
+    </item>
+
+    <!-- Focused state -->
+    <item android:state_focused="true" android:state_pressed="false">
+        <color android:color="@android:color/holo_blue_light" />
+    </item>
+</selector>
