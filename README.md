@@ -9,4 +9,4 @@ Server
 
 Client
 
-![e4427d4c40a0d754774da7556071c9e](https://user-images.githubusercontent.com/126366476/221388293-598ab124-29e0-4c92-b9b0-952a850dc170.jpg)
+<img src="https://user-images.githubusercontent.com/126366476/221388293-598ab124-29e0-4c92-b9b0-952a850dc170.jpg" width="400" />
