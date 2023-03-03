@@ -31,6 +31,8 @@ namespace EasySync
             });
             serverThread.Start();
             process = Process.GetCurrentProcess();
+            this.Icon = new Icon("D:\\Projects\\EasySync\\myico.ico");
+            notifyIcon1.Visible = true;
         }
 
         private void StartServer()
@@ -42,6 +44,21 @@ namespace EasySync
         private void Form1_Load(object sender, EventArgs e)
         {
 
+        }
+
+        private void Form1_Resize(object sender, EventArgs e)
+        {
+            if (WindowState == FormWindowState.Minimized)
+            {
+                notifyIcon1.Visible = true;
+                ShowInTaskbar = false;
+                Hide();
+            }
+            else
+            {
+                notifyIcon1.Visible = false;
+                ShowInTaskbar = true;
+            }
         }
 
         public void updateConnectStatus(bool connected)
@@ -89,6 +106,11 @@ namespace EasySync
                 {
                     content.Text = text;
                     Hint.Text = "";
+                    this.ShowInTaskbar = true;
+                    this.WindowState = FormWindowState.Normal;
+                    this.Show();
+                    //BringToFront();
+                    //Activate();
                 }));
             })).Start();
         }
@@ -134,6 +156,7 @@ namespace EasySync
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
+            notifyIcon1.Dispose();
             ShutDown();
         }
 
@@ -141,5 +164,18 @@ namespace EasySync
         {
 
         }
+
+        private void content_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void notifyIcon1_Click(object sender, EventArgs e)
+        {
+            this.ShowInTaskbar = true;
+            this.WindowState = FormWindowState.Normal;
+            this.Show();
+        }
+
     }
 }

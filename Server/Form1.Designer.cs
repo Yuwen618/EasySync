@@ -1,4 +1,6 @@
-﻿namespace EasySync
+﻿using System;
+
+namespace EasySync
 {
     partial class Form1
     {
@@ -28,11 +30,14 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.content = new System.Windows.Forms.TextBox();
             this.btncopy = new System.Windows.Forms.Button();
             this.Hint = new System.Windows.Forms.Label();
             this.Connected = new System.Windows.Forms.Label();
             this.ServerInfo = new System.Windows.Forms.Label();
+            this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
             this.SuspendLayout();
             // 
             // content
@@ -44,6 +49,7 @@
             this.content.ReadOnly = true;
             this.content.Size = new System.Drawing.Size(754, 182);
             this.content.TabIndex = 0;
+            this.content.TextChanged += new System.EventHandler(this.content_TextChanged);
             // 
             // btncopy
             // 
@@ -78,6 +84,13 @@
             this.ServerInfo.TabIndex = 4;
             this.ServerInfo.Click += new System.EventHandler(this.label1_Click);
             // 
+            // notifyIcon1
+            // 
+            this.notifyIcon1.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon1.Icon")));
+            this.notifyIcon1.Text = "EasySync";
+            this.notifyIcon1.Visible = true;
+            this.notifyIcon1.Click += new EventHandler(notifyIcon1_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
@@ -93,6 +106,8 @@
             this.Name = "Form1";
             this.Text = "EasySync";
             this.Load += new System.EventHandler(this.Form1_Load);
+
+            this.Resize += new System.EventHandler(this.Form1_Resize);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -105,6 +120,7 @@
         private System.Windows.Forms.Label Hint;
         private System.Windows.Forms.Label Connected;
         private System.Windows.Forms.Label ServerInfo;
+        private System.Windows.Forms.NotifyIcon notifyIcon1;
     }
 }
 
