@@ -39,7 +39,7 @@ namespace EasySync
                     AppendText(line);
 
                     // Save to file
-                    SaveToFile($"[{date}] {line}");
+                    SaveToFile($"[{date}] {line}" + "---Received");
                 }
 
                 myForm.updateConnectStatus(false);
@@ -81,6 +81,36 @@ namespace EasySync
             {
                 sw.WriteLine(line);
             }
+        }
+
+        public void sendImg(byte[] imageData)
+        {
+            byte[] newdata = new byte[imageData.Length + 1];
+            newdata[0] = 0x00;
+            imageData.CopyTo(newdata, 1);
+
+            NetworkStream stream = client.GetStream();
+            stream.Write(newdata, 0, newdata.Length);
+        }
+
+        public void sendText(string message)
+        {
+            NetworkStream stream = client.GetStream();
+
+            // 将字符串转换成字节数组
+            byte[] data = Encoding.UTF8.GetBytes(message+"\n");
+            byte[] newdata = new byte[data.Length + 1];
+            newdata[0] = 0x01;
+            data.CopyTo(newdata, 1);
+
+            // 发送数据
+            stream.Write(newdata, 0, newdata.Length);
+
+            string date = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+            AppendText(message);
+
+            // Save to file
+            SaveToFile($"[{date}] {message}" + "---Sent");
         }
     }
 }

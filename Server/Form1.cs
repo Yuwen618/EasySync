@@ -4,6 +4,9 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -21,6 +24,14 @@ namespace EasySync
         delegate void UpdateTextBoxDelegate(string text);
         UpdateTextBoxDelegate updateTextBoxDelegate;
         Process process;
+
+        private bool isMouseDown = false;
+        private Point startPoint;
+        private Rectangle selectionRectangle;
+        private Pen dashPen;
+        private Cursor cursorCross;
+        private bool mClientConnected = false;
+        private string curfileName;
         public Form1()
         {
             InitializeComponent();
@@ -31,8 +42,14 @@ namespace EasySync
             });
             serverThread.Start();
             process = Process.GetCurrentProcess();
-            this.Icon = new Icon("D:\\Projects\\EasySync\\myico.ico");
+            this.Icon = new Icon("D:\\Projects\\EasySync\\easysync.ico");
             notifyIcon1.Visible = true;
+
+            dashPen = new Pen(Color.Black);
+            dashPen.DashStyle = DashStyle.Dash;
+
+            //cursorCross = new Cursor(Properties.Resources.crosshair.Handle);
+
         }
 
         private void StartServer()
@@ -46,20 +63,6 @@ namespace EasySync
 
         }
 
-        private void Form1_Resize(object sender, EventArgs e)
-        {
-            if (WindowState == FormWindowState.Minimized)
-            {
-                notifyIcon1.Visible = true;
-                ShowInTaskbar = false;
-                Hide();
-            }
-            else
-            {
-                notifyIcon1.Visible = false;
-                ShowInTaskbar = true;
-            }
-        }
 
         public void updateConnectStatus(bool connected)
         {
@@ -71,6 +74,7 @@ namespace EasySync
                         Connected.Text = "Connected";
                     else
                         Connected.Text = "Disconnected";
+                    mClientConnected = connected;
                 }));
             })).Start();
         }
@@ -105,10 +109,13 @@ namespace EasySync
                 this.Invoke(new Action(() =>
                 {
                     content.Text = text;
-                    Hint.Text = "";
+                    Hint.Text = "Sent";
                     this.ShowInTaskbar = true;
                     this.WindowState = FormWindowState.Normal;
                     this.Show();
+
+                    content.Show();
+                    pictureBox.Hide();
                     //BringToFront();
                     //Activate();
                 }));
@@ -129,6 +136,7 @@ namespace EasySync
 
         private void btncopy_Click(object sender, EventArgs e)
         {
+            /*
             if (Clipboard.ContainsText())
             {
                 Clipboard.Clear();
@@ -138,6 +146,35 @@ namespace EasySync
                 Clipboard.SetText(content.Text);
                 Hint.Text = "Copied";
             }
+            */
+            if (!string.IsNullOrEmpty(sendbox.Text) && mClientConnected)
+            {
+                server.sendTextToClient(sendbox.Text);
+                Hint.Text = "Sent";
+                sendbox.Text = "";
+
+            }
+        }
+
+        private void sendbox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (!string.IsNullOrEmpty(sendbox.Text) && mClientConnected)
+                {
+                    server.sendTextToClient(sendbox.Text);
+                    Hint.Text = "Sent";
+                }
+            }
+        }
+
+        private void pictureBox_Click(object sender, EventArgs e)
+        {
+            if (curfileName != null)
+            {
+                Process.Start("explorer.exe", curfileName);
+            }
+
         }
 
         private void ShutDown()
@@ -165,17 +202,203 @@ namespace EasySync
 
         }
 
+        private void content_Click(object sender, EventArgs e)
+        {
+ 
+            if (content.Text != "")
+            {
+                if (content.Text.StartsWith("http://") || content.Text.StartsWith("https://"))
+                {
+                    Process.Start("chrome.exe", content.Text);
+                }
+                else
+                {
+                    Clipboard.SetText(content.Text);
+                    Hint.Text = "Copied";
+                }
+            }
+            
+        }
+
         private void content_TextChanged(object sender, EventArgs e)
         {
 
+            if (content.Text != "")
+            {
+                if (content.Text.StartsWith("http://") || content.Text.StartsWith("https://"))
+                {
+                    Process.Start("chrome.exe", content.Text);
+                }
+                else
+                {
+                    Clipboard.SetText(content.Text);
+                    Hint.Text = "Copied";
+                }
+            }
+
         }
 
-        private void notifyIcon1_Click(object sender, EventArgs e)
+        private async void button1_Click(object sender, EventArgs e)
         {
-            this.ShowInTaskbar = true;
-            this.WindowState = FormWindowState.Normal;
-            this.Show();
+            Hide();
+            await Task.Delay(500);
+            ScreenshotForm screenshotForm = new ScreenshotForm();
+            screenshotForm.ShowDialog();
+
+            Show();
+
+            System.Drawing.Image clipboardImage = Clipboard.GetImage();
+            if (clipboardImage != null)
+            {
+                // 设置到PictureBox控件中显示
+                pictureBox.Image = clipboardImage;
+                content.Hide();
+                pictureBox.Show();
+                curfileName = DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png";
+                clipboardImage.Save(curfileName, ImageFormat.Png);
+
+                //send to client
+                if (mClientConnected)
+                {
+                    MemoryStream ms = new MemoryStream();
+                    clipboardImage.Save(ms, ImageFormat.Png);
+                    byte[] imageData = ms.ToArray();
+                    server.sendImgToClient(imageData);
+                }
+            }
         }
 
+
+
+        private Bitmap CaptureScreen()
+        {
+            var screenBounds = Screen.GetBounds(Point.Empty);
+            var bitmap = new Bitmap(screenBounds.Width, screenBounds.Height);
+            using (var g = Graphics.FromImage(bitmap))
+            {
+                g.CopyFromScreen(Point.Empty, Point.Empty, screenBounds.Size);
+            }
+            return bitmap;
+        }
+
+
+
+
+    }
+
+
+    public partial class ScreenshotForm : Form
+    {
+        private Point startPoint;
+        private Rectangle rect = new Rectangle();
+
+        private bool isMouseDown = false;
+        private Cursor cursorCross;
+
+        public ScreenshotForm()
+        {
+
+
+            // 设置窗体为无边框样式
+            FormBorderStyle = FormBorderStyle.None;
+
+            // 设置窗体全屏
+            WindowState = FormWindowState.Maximized;
+
+            // 用自定义光标替换鼠标默认光标
+
+            Cursor = cursorCross;
+
+            // 截取全屏幕图像
+            this.BackgroundImage = new Bitmap(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
+            using (var g = Graphics.FromImage(this.BackgroundImage))
+            {
+                g.CopyFromScreen(0, 0, 0, 0, this.BackgroundImage.Size);
+            }
+
+            // 设置截屏窗体的一些属性
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.WindowState = FormWindowState.Maximized;
+            this.Cursor = Cursors.Cross;
+            this.DoubleBuffered = true;
+            this.KeyDown += new KeyEventHandler(ScreenshotForm_KeyDown);
+
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+
+            if (e.Button == MouseButtons.Left)
+            {
+                startPoint = e.Location;
+
+                isMouseDown = true;
+            }
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+
+            if (isMouseDown)
+            {
+                Point tempEndPoint = e.Location;
+
+                rect.Location = new Point(
+                    Math.Min(startPoint.X, tempEndPoint.X),
+                    Math.Min(startPoint.Y, tempEndPoint.Y));
+
+                rect.Size = new Size(
+                    Math.Abs(startPoint.X - tempEndPoint.X),
+                    Math.Abs(startPoint.Y - tempEndPoint.Y));
+
+                Invalidate();
+            }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+
+            if (e.Button == MouseButtons.Left)
+            {
+                isMouseDown = false;
+
+                // 根据所选区域截取屏幕并复制到剪贴板
+                Bitmap screenshot = new Bitmap(rect.Width, rect.Height);
+                Graphics graphics = Graphics.FromImage(screenshot);
+
+                rect.Location = new Point(rect.Location.X+1, rect.Location.Y+1);
+                rect.Size = new Size(rect.Size.Width-1, rect.Size.Height-1);
+
+                graphics.CopyFromScreen(rect.Location, Point.Empty, rect.Size);
+
+                Clipboard.SetImage(screenshot);
+
+                Close();
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+
+            // 绘制虚线矩形框
+            using (Pen pen = new Pen(Color.Red))
+            {
+                pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
+
+                e.Graphics.DrawRectangle(pen, rect);
+            }
+        }
+
+        private void ScreenshotForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+            {
+                this.Close();
+            }
+        }
     }
 }

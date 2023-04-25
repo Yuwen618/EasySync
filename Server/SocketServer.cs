@@ -111,6 +111,32 @@ namespace EasySync
             ch.start();
         }
 
+        public void sendImgToClient(byte[] imageData)
+        {
+            ClientHandler client = ClientList.FirstOrDefault();
+            if (client != null)
+            {
+                Thread thread = new Thread(() =>
+                {
+                    client.sendImg(imageData);
+                });
+                thread.Start();
+            }
+        }
+
+        public void sendTextToClient(string text)
+        {
+            ClientHandler client = ClientList.FirstOrDefault();
+            if (client != null)
+            {
+                Thread thread = new Thread(() =>
+                {
+                    client.sendText(text);
+                });
+                thread.Start();
+            }
+        }
+
     }
 
     
