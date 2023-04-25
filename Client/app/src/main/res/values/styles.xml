@@ -1,0 +1,20 @@
+<resources>
+
+    <style name="Widget.Theme.EasySync.ActionBar.Fullscreen" parent="Widget.AppCompat.ActionBar">
+        <item name="android:background">@color/black_overlay</item>
+    </style>
+
+    <style name="Widget.Theme.EasySync.ButtonBar.Fullscreen" parent="">
+        <item name="android:background">@color/black_overlay</item>
+        <item name="android:buttonBarStyle">?android:attr/buttonBarStyle</item>
+    </style>
+    <style name="PopupAnimation">
+        <item name="android:windowEnterAnimation">@anim/slide_in_up</item>
+        <item name="android:windowExitAnimation">@anim/slide_out_down</item>
+    </style>
+
+    <style name="PopupAnimation2">
+        <item name="android:windowEnterAnimation">@anim/slide_out_down</item>
+        <item name="android:windowExitAnimation">@anim/slide_in_up</item>
+    </style>
+</resources>
