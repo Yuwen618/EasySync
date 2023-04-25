@@ -11,15 +11,20 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.SharedPreferences;
+import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.text.TextUtils;
+import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -35,7 +40,7 @@ import java.util.Locale;
 
 import com.bely.easysync.Utils.MsgItem;
 
-public class MainActivity extends AppCompatActivity implements Network.NetworkStatusListener {
+public class MainActivity extends AppCompatActivity implements Network.UIEventListener {
     EditText mText;
     TextView mConnectingTxt;
     TextView mIPAddrTxt;
@@ -64,6 +69,19 @@ public class MainActivity extends AppCompatActivity implements Network.NetworkSt
         Network.getInstance().setNetworkStatusListener(this);
     }
 
+    private void setFullScreen() {
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE |
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+    }
+
+    public void exitFulLScreen() {
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+    }
 
 
     private Runnable mUpdateStatusRunnable = new Runnable() {
@@ -109,7 +127,7 @@ public class MainActivity extends AppCompatActivity implements Network.NetworkSt
     public void sendMsg(View view) {
         if (mText.getText() != null && !TextUtils.isEmpty(mText.getText().toString())) {
             Network.getInstance().sendMsg(mText.getText().toString());
-            mMyAdapter.addData(mText.getText().toString());
+            mMyAdapter.addData(mText.getText().toString(), true);
             mText.getText().clear();
 
             int position = mMyAdapter.getItemCount() - 1;
@@ -130,6 +148,42 @@ public class MainActivity extends AppCompatActivity implements Network.NetworkSt
             clipboard.setPrimaryClip(clip);
             Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    public void saveImg(View v) {
+        int position = (int)v.getTag();
+        if (position >= 0 && position < Utils.mDataList.size()) {
+            Utils.saveImg(Utils.mDataList.get(position).img);
+        }
+    }
+
+    public void showImg(View v) {
+        int position = (int) v.getTag();
+        if (position >= 0 && position < Utils.mDataList.size()) {
+            Utils.setBitmapClicked(Utils.mDataList.get(position).img);
+
+            //Intent intent = new Intent();
+            //intent.setClass(this, ImgViewActivity.class);
+            //startActivity(intent);
+
+            ImgViewWindow popupWindow = new ImgViewWindow(MainActivity.this);
+            popupWindow.showAtLocation(getWindow().getDecorView(), Gravity.CENTER, 0, 0);
+            mImgViewWindow = popupWindow;
+            setFullScreen();
+        }
+    }
+    PopupWindow mImgViewWindow = null;
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+            if (mImgViewWindow != null) {
+                mImgViewWindow.dismiss();
+                mImgViewWindow = null;
+                exitFulLScreen();
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     @Override
@@ -187,6 +241,16 @@ public class MainActivity extends AppCompatActivity implements Network.NetworkSt
         mHandler.postDelayed(mUpdateStatusRunnable, 300);
     }
 
+    @Override
+    public void onGotMsg(Bitmap img) {
+        mHandler.post(()->mMyAdapter.addData(img, false));
+    }
+
+    @Override
+    public void onGotMsg(String msg) {
+        mHandler.post(()->mMyAdapter.addData(msg, false));
+    }
+
     public static String getLocalIpAddress() {
         try {
 
@@ -221,12 +285,30 @@ public class MainActivity extends AppCompatActivity implements Network.NetworkSt
 
             return time;
         }
-        public void addData(String msg) {
+        public void addData(String msg, boolean sent) {
             MsgItem item = new MsgItem();
+            item.type = 1;
             item.content = msg;
+            item.time = getTime();
+            item.sent = sent;
+            Utils.mDataList.add(item);
+            notifyDataSetChanged();
+            int position = mMyAdapter.getItemCount() - 1;
+            //mRecyclerView.scrollToPosition(position);
+            mRecyclerView.smoothScrollToPosition(position);
+        }
+
+        public void addData(Bitmap img, boolean sent) {
+            MsgItem item = new MsgItem();
+            item.type = 0;
+            item.img = img;
+            item.sent = sent;
             item.time = getTime();
             Utils.mDataList.add(item);
             notifyDataSetChanged();
+            int position = mMyAdapter.getItemCount() - 1;
+            //mRecyclerView.scrollToPosition(position);
+            mRecyclerView.smoothScrollToPosition(position);
         }
 
         @NonNull
@@ -243,12 +325,38 @@ public class MainActivity extends AppCompatActivity implements Network.NetworkSt
         public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {
             // 将数据设置到ViewHolder中
             holder.mTime.setText(Utils.mDataList.get(position).time);
-            holder.mContent.setText(Utils.mDataList.get(position).content);
-            holder.itemView.setTag(position);
-            holder.itemView.setOnLongClickListener((v) -> {
-                copyItem(v);
-                return false;
-            });
+            if (Utils.mDataList.get(position).type == 0) {
+                //image
+                holder.itemView.setTag(position);
+                holder.itemView.setOnLongClickListener((v) -> {
+                    saveImg(v);
+                    return true;
+                });
+                holder.itemView.setOnClickListener((v) -> {
+                    showImg(v);
+                    return;
+                });
+                holder.mContent.setVisibility(View.GONE);
+                holder.mImage.setImageBitmap(Utils.mDataList.get(position).img);
+            } else {
+                //text
+                holder.mImage.setVisibility(View.GONE);
+                holder.mContent.setText(Utils.mDataList.get(position).content);
+                holder.itemView.setTag(position);
+                holder.itemView.setOnLongClickListener((v) -> {
+                    copyItem(v);
+                    return false;
+                });
+            }
+            LinearLayout.LayoutParams p = (LinearLayout.LayoutParams) holder.mContent.getLayoutParams();
+            int marginStart = 10;
+            if (Utils.mDataList.get(position).sent) {
+                ((LinearLayout) holder.itemView).setGravity(Gravity.RIGHT);
+                marginStart = 300;
+            }
+            p.setMarginStart(marginStart);
+            holder.mContent.setLayoutParams(p);
+
         }
 
         @Override
@@ -259,11 +367,13 @@ public class MainActivity extends AppCompatActivity implements Network.NetworkSt
         public class MyViewHolder extends RecyclerView.ViewHolder {
             public TextView mTime;
             public TextView mContent;
+            public ImageView mImage;
 
             public MyViewHolder(View itemView) {
                 super(itemView);
                 mTime = itemView.findViewById(R.id.txtTime);
                 mContent = itemView.findViewById(R.id.txtContent);
+                mImage = itemView.findViewById(R.id.image);
             }
         }
     }
@@ -271,9 +381,9 @@ public class MainActivity extends AppCompatActivity implements Network.NetworkSt
     @Override
     public void onStop() {
         super.onStop();
-        mHandler.removeCallbacksAndMessages(null);
-        Network.getInstance().setNetworkStatusListener(null);
-        Network.getInstance().onGoingToBackground();
+        //mHandler.removeCallbacksAndMessages(null);
+        //Network.getInstance().setNetworkStatusListener(null);
+        //Network.getInstance().onGoingToBackground();
     }
 
     @Override

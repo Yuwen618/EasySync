@@ -1,11 +1,13 @@
 package com.bely.easysync;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.text.TextUtils;
 import android.util.Log;
 
 import java.io.BufferedReader;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -19,13 +21,16 @@ public class Network {
     private Socket socket;
     private OutputStreamWriter writer;
     private BufferedReader reader;
+    private DataInputStream inputstream;
     private static Network instance;
-    NetworkStatusListener mlistener;
-    public interface NetworkStatusListener {
+    UIEventListener mlistener;
+    public interface UIEventListener {
         void onNetworkStatusChanged();
+        void onGotMsg(Bitmap img);
+        void onGotMsg(String msg);
     }
 
-    public void setNetworkStatusListener(NetworkStatusListener l) {
+    public void setNetworkStatusListener(UIEventListener l) {
         mlistener = l;
         if (mlistener != null) {
             mlistener.onNetworkStatusChanged();
@@ -93,7 +98,8 @@ public class Network {
             // create a writer to send data to the server
             writer = new OutputStreamWriter(socket.getOutputStream());
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            Thread t = new Thread(()->checkConnection(reader));
+            inputstream = new DataInputStream(socket.getInputStream());
+            Thread t = new Thread(()->readData(inputstream));
             t.start();
         } catch (IOException e) {
             e.printStackTrace();
@@ -119,13 +125,21 @@ public class Network {
         socket = null;
         writer = null;
         reader = null;
-        mHandler.postDelayed(mReconnectRunnable, 2000);
+        mHandler.postDelayed(mReconnectRunnable, 500);
     }
 
-    private void checkConnection(BufferedReader reader) {
+    private void readData(DataInputStream input) {
         try {
-            String line = null;
-            while ((line = reader.readLine()) != null);
+            while(true) {
+                byte messageType = input.readByte();
+                if (messageType == 0x00) {//image
+                    Bitmap bitmap = BitmapFactory.decodeStream(input);
+                    mlistener.onGotMsg(bitmap);
+                } else { //text
+                    String text = input.readLine();
+                    mlistener.onGotMsg(text);
+                }
+            }
         } catch (IOException e) {
             e.printStackTrace();
             closeAndReconnect();
