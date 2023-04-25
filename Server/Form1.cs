@@ -35,6 +35,9 @@ namespace EasySync
         public Form1()
         {
             InitializeComponent();
+
+            this.ShowInTaskbar = false;
+
             this.FormClosing += new FormClosingEventHandler(Form1_FormClosing);
             Thread serverThread = new Thread(()=>
             {
@@ -49,7 +52,8 @@ namespace EasySync
             dashPen.DashStyle = DashStyle.Dash;
 
             //cursorCross = new Cursor(Properties.Resources.crosshair.Handle);
-
+            //DockForm df = new DockForm();
+            //df.Show();
         }
 
         private void StartServer()
@@ -193,9 +197,23 @@ namespace EasySync
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            notifyIcon1.Dispose();
-            ShutDown();
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+                // 阻止关闭窗体
+                e.Cancel = true;
+
+                // 隐藏窗体
+                this.Hide();
+                if (df == null)
+                {
+                    df = new DockForm(this);
+                }
+                df.Show();
+            }
+
+            //ShutDown();
         }
+        DockForm df = null;
 
         private void label1_Click(object sender, EventArgs e)
         {
