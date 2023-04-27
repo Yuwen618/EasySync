@@ -79,7 +79,7 @@ namespace EasySync
             try
             {
                 // 发送一个心跳包给客户端
-                sendText("heartbeat");
+                sendText("heartbeat", false);
             }
             catch (Exception ex)
             {
@@ -125,12 +125,12 @@ namespace EasySync
             stream.Write(newdata, 0, newdata.Length);
         }
 
-        public void sendText(string message)
+        public void sendText(string message, bool show)
         {
             NetworkStream stream = client.GetStream();
 
             // 将字符串转换成字节数组
-            byte[] data = Encoding.UTF8.GetBytes(message+"\n");
+            byte[] data = Encoding.UTF8.GetBytes(message + "\n");
             byte[] newdata = new byte[data.Length + 1];
             newdata[0] = 0x01;
             data.CopyTo(newdata, 1);
@@ -138,11 +138,18 @@ namespace EasySync
             // 发送数据
             stream.Write(newdata, 0, newdata.Length);
 
-            string date = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
-            AppendText(message);
+            if (show)
+            {
+                string date = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+                AppendText(message);
 
-            // Save to file
-            SaveToFile($"[{date}] {message}" + "---Sent");
+                // Save to file
+                SaveToFile($"[{date}] {message}" + "---Sent");
+            }
+        }
+        public void sendText(string message)
+        {
+            sendText(message, true);
         }
     }
 }

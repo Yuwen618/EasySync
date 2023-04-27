@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -59,7 +60,7 @@ namespace EasySync
 
         private void menuItem1_Click(object sender, EventArgs e)
         {
-            Application.Exit();
+            Process.GetCurrentProcess().Kill();
         }
 
         protected override void OnDoubleClick(EventArgs e)

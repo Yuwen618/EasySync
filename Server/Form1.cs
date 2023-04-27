@@ -114,9 +114,7 @@ namespace EasySync
                 {
                     content.Text = text;
                     Hint.Text = "Sent";
-                    this.ShowInTaskbar = true;
-                    this.WindowState = FormWindowState.Normal;
-                    this.Show();
+
 
                     content.Show();
                     pictureBox.Hide();
