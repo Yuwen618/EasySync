@@ -137,7 +137,9 @@ public class Network {
                     mlistener.onGotMsg(bitmap);
                 } else { //text
                     String text = input.readLine();
-                    mlistener.onGotMsg(text);
+                    if (!"heartbeat".equals(text)) {
+                        mlistener.onGotMsg(text);
+                    }
                 }
             }
         } catch (IOException e) {
