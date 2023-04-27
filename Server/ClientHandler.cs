@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows.Forms;
 
 namespace EasySync
@@ -17,11 +18,19 @@ namespace EasySync
         TcpClient client;
         Form1 myForm;
         List<ClientHandler> allClientList;
+        private bool disconnected = false;
+        private System.Timers.Timer heartbeatTimer;
         public ClientHandler(TcpClient c, Form1 form, List<ClientHandler> thelist)
         {
             myForm = form;
             client = c;
             allClientList = thelist;
+            disconnected = false;
+
+            heartbeatTimer = new System.Timers.Timer();
+            heartbeatTimer.Interval = 3000;
+            heartbeatTimer.Elapsed += SendHeartbeat;
+            heartbeatTimer.Enabled = false;
         }
 
         public void start()
@@ -31,30 +40,51 @@ namespace EasySync
             {
                 stream = client.GetStream();
                 reader = new StreamReader(stream, Encoding.UTF8);
+                writer = new StreamWriter(stream, Encoding.UTF8);
 
                 string line;
-                while ((line = reader.ReadLine()) != null)
-                {
-                    string date = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
-                    AppendText(line);
+                // 开始心跳包定时器
+                heartbeatTimer.Enabled = true;
+                while (true && !disconnected)
+                {/*
+                    if (client.Available == 0 && reader.EndOfStream)
+                    {
+                        break;
+                    }*/
+                    if (stream.DataAvailable)
+                    {
+                        line = reader.ReadLine();
+                        if (line == null || line.Length == 0)
+                        {
+                            break;
+                        }
+                        string date = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+                        AppendText(line);
 
-                    // Save to file
-                    SaveToFile($"[{date}] {line}" + "---Received");
+                        // Save to file
+                        SaveToFile($"[{date}] {line}" + "---Received");
+                    }
                 }
 
-                myForm.updateConnectStatus(false);
-                reader.Close();
-                stream.Close();
-                client.Close();
-                allClientList.Remove(this);
+                shutdown();
             }
             catch (Exception e)
             {
-                reader.Close();
-                stream.Close();
-                client.Close();
-                myForm.updateConnectStatus(false);
-                allClientList.Remove(this);
+                shutdown();
+            }
+        }
+
+        private void SendHeartbeat(object sender, ElapsedEventArgs e)
+        {
+            try
+            {
+                // 发送一个心跳包给客户端
+                sendText("heartbeat");
+            }
+            catch (Exception ex)
+            {
+                // 发送心跳包失败，认为客户端已经断开连接
+                disconnected = true;
             }
         }
 
@@ -64,8 +94,10 @@ namespace EasySync
             stream.Close();
             client.Close();
             myForm.updateConnectStatus(false);
+            allClientList.Remove(this);
 
         }
+
 
         private void AppendText(string text)
         {

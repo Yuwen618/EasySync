@@ -15,6 +15,7 @@ namespace EasySync
         private DockStyle dockStyle = DockStyle.None;
         private Bitmap iconBitmap;
         private Form mMainForm;
+        ContextMenuStrip contextMenu;
         public DockForm(Form mainForm)
         {
             //InitializeComponent();
@@ -49,6 +50,16 @@ namespace EasySync
             Graphics g = Graphics.FromImage(iconBitmap);
             g.Clear(Color.Transparent);
             g.DrawIcon(icon, 0, 0);
+
+            contextMenu = new ContextMenuStrip();
+            contextMenu.Items.Add("Exit");
+
+            contextMenu.Items[0].Click += new EventHandler(menuItem1_Click);
+        }
+
+        private void menuItem1_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
         }
 
         protected override void OnDoubleClick(EventArgs e)
@@ -83,6 +94,11 @@ namespace EasySync
 
             // Capture the mouse for dragging
             Capture = true;
+            if (e.Button == MouseButtons.Right)
+            {
+                contextMenu.Show(this, e.Location);
+
+            }
 
         }
 
