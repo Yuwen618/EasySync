@@ -68,6 +68,7 @@ namespace EasySync
             base.OnDoubleClick(e);
             // 在这里添加双击事件的处理代码
             mMainForm.Show();
+            mMainForm.ShowInTaskbar = true;
             Hide();
         }
 

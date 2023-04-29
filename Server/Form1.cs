@@ -36,9 +36,10 @@ namespace EasySync
         {
             InitializeComponent();
 
-            this.ShowInTaskbar = false;
+            this.ShowInTaskbar = true;
 
             this.FormClosing += new FormClosingEventHandler(Form1_FormClosing);
+
             Thread serverThread = new Thread(()=>
             {
                 StartServer();
@@ -124,6 +125,22 @@ namespace EasySync
             })).Start();
         }
 
+        public void showImg(System.Drawing.Image image)
+        {
+            new Task(new Action(() =>
+            {
+                this.Invoke(new Action(() =>
+                {
+                    pictureBox.Image = image;
+
+                    content.Hide();
+                    pictureBox.Show();
+                    //BringToFront();
+                    //Activate();
+                }));
+            })).Start();
+        }
+
         public void PortNotAvilable()
         {
             new Task(new Action(() =>
@@ -179,6 +196,11 @@ namespace EasySync
 
         }
 
+        public void setImgFileName(string name)
+        {
+            curfileName = name;
+        }
+
         private void ShutDown()
         {
             if (server != null)
@@ -207,6 +229,7 @@ namespace EasySync
                     df = new DockForm(this);
                 }
                 df.Show();
+                this.ShowInTaskbar = false;
             }
 
             //ShutDown();
