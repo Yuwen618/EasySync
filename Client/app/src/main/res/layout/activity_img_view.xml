@@ -28,4 +28,13 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:src="@drawable/save"/>
+
+    <ImageView
+        android:id="@+id/closebutton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:onClick="close"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:src="@drawable/close"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

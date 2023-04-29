@@ -4,6 +4,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -13,6 +15,8 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.text.TextUtils;
@@ -28,6 +32,8 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -67,6 +73,11 @@ public class MainActivity extends AppCompatActivity implements Network.UIEventLi
         mMyAdapter = new MyAdapter();
         mRecyclerView.setAdapter(mMyAdapter);
         Network.getInstance().setNetworkStatusListener(this);
+
+        if (savedInstanceState == null) {
+            // 应用程序尚未启动，处理接收到的共享内容
+            handleIncomingIntent(getIntent());
+        }
     }
 
     private void setFullScreen() {
@@ -139,6 +150,54 @@ public class MainActivity extends AppCompatActivity implements Network.UIEventLi
         }
     }
 
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+
+        // 应用程序已经启动，处理接收到的共享内容
+        handleIncomingIntent(intent);
+    }
+
+    public Bitmap getBitmapFromUri(Uri uri) {
+        try {
+            // 通过ContentResolver打开Uri
+            InputStream inputStream = getContentResolver().openInputStream(uri);
+            // 从输入流解码Bitmap
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+            inputStream.close();
+            return bitmap;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+    private void handleIncomingIntent(Intent intent) {
+        Thread t = new Thread(() -> {
+            String action = intent.getAction();
+            String type = intent.getType();
+
+            if (Intent.ACTION_SEND.equals(action) && type != null && type.startsWith("image/")) {
+                Uri imageUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+                if (imageUri != null) {
+                    // 处理接收到的图片
+                    Bitmap bmp = getBitmapFromUri(imageUri);
+                    mHandler.post(() -> {
+                        mMyAdapter.addData(bmp, true);
+                        int position = mMyAdapter.getItemCount() - 1;
+                        //mRecyclerView.scrollToPosition(position);
+                        mRecyclerView.smoothScrollToPosition(position);
+                    });
+                    Network.getInstance().sendImg(bmp);
+                }
+            }
+        });
+        t.start();
+    }
+
+
+
     public void copyItem(View v) {
         int position = (int)v.getTag();
         if (position >= 0 && position < Utils.mDataList.size()) {
@@ -157,10 +216,17 @@ public class MainActivity extends AppCompatActivity implements Network.UIEventLi
         }
     }
 
+    public void close(View v) {
+        exitFulLScreen();
+        mImgViewWindow.dismiss();
+    }
+
     public void showImg(View v) {
         int position = (int) v.getTag();
         if (position >= 0 && position < Utils.mDataList.size()) {
+
             Utils.setBitmapClicked(Utils.mDataList.get(position).img);
+
 
             //Intent intent = new Intent();
             //intent.setClass(this, ImgViewActivity.class);
@@ -251,6 +317,13 @@ public class MainActivity extends AppCompatActivity implements Network.UIEventLi
         mHandler.post(()->mMyAdapter.addData(msg, false));
     }
 
+    @Override
+    public void onSendError() {
+        mHandler.post(()->{
+            Toast.makeText(this, "Failed to send", Toast.LENGTH_SHORT).show();
+        });
+    }
+
     public static String getLocalIpAddress() {
         try {
 
@@ -311,6 +384,8 @@ public class MainActivity extends AppCompatActivity implements Network.UIEventLi
             mRecyclerView.smoothScrollToPosition(position);
         }
 
+
+
         @NonNull
         @Override
         public MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -328,16 +403,18 @@ public class MainActivity extends AppCompatActivity implements Network.UIEventLi
             if (Utils.mDataList.get(position).type == 0) {
                 //image
                 holder.itemView.setTag(position);
-                holder.itemView.setOnLongClickListener((v) -> {
-                    saveImg(v);
-                    return true;
-                });
                 holder.itemView.setOnClickListener((v) -> {
                     showImg(v);
                     return;
                 });
                 holder.mContent.setVisibility(View.GONE);
+
+                holder.itemView.setOnLongClickListener((v) -> {
+                    saveImg(v);
+                    return true;
+                });
                 holder.mImage.setImageBitmap(Utils.mDataList.get(position).img);
+
             } else {
                 //text
                 holder.mImage.setVisibility(View.GONE);
@@ -348,15 +425,24 @@ public class MainActivity extends AppCompatActivity implements Network.UIEventLi
                     return false;
                 });
             }
-            LinearLayout.LayoutParams p = (LinearLayout.LayoutParams) holder.mContent.getLayoutParams();
-            int marginStart = 10;
-            if (Utils.mDataList.get(position).sent) {
-                ((LinearLayout) holder.itemView).setGravity(Gravity.RIGHT);
-                marginStart = 300;
-            }
-            p.setMarginStart(marginStart);
-            holder.mContent.setLayoutParams(p);
 
+
+            if (Utils.mDataList.get(position).sent) {
+                adjustAlignmentToRight(holder);
+            }
+
+        }
+
+        private void adjustAlignmentToRight(MyViewHolder holder) {
+            ConstraintSet set = new ConstraintSet();
+            set.clone((ConstraintLayout) holder.itemView);
+            set.clear(holder.mContent.getId(), ConstraintSet.START);
+            set.clear(holder.mTime.getId(), ConstraintSet.START);
+            set.clear(holder.mImage.getId(), ConstraintSet.START);
+            set.connect(holder.mContent.getId(), ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END);
+            set.connect(holder.mTime.getId(), ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END);
+            set.connect(holder.mImage.getId(), ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END);
+            set.applyTo((ConstraintLayout) holder.itemView);
         }
 
         @Override

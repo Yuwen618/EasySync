@@ -7,11 +7,15 @@ import android.os.HandlerThread;
 import android.util.Log;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 public class Network {
     private static final String TAG = "Network";
@@ -28,6 +32,7 @@ public class Network {
         void onNetworkStatusChanged();
         void onGotMsg(Bitmap img);
         void onGotMsg(String msg);
+        void onSendError();
     }
 
     public void setNetworkStatusListener(UIEventListener l) {
@@ -84,7 +89,11 @@ public class Network {
     }
 
     public void sendMsg(String msg) {
-        mHandler.post(()->sendMessage(msg));
+        mHandler.post(()-> sendText(msg));
+    }
+
+    public void sendImg(Bitmap bmp) {
+        mHandler.post(()->sendImgToServer(bmp));
     }
 
     private void connect() {
@@ -135,13 +144,17 @@ public class Network {
                 if (messageType == 0x00) {//image
                     Bitmap bitmap = BitmapFactory.decodeStream(input);
                     mlistener.onGotMsg(bitmap);
-                } else { //text
+                } else if (messageType == 0x01){ //text
                     String text = input.readLine();
                     if (!"heartbeat".equals(text)) {
                         mlistener.onGotMsg(text);
                     }
+                } else if (messageType == -1) {
+                    Log.w(TAG, "disconnected, reconnect.");
+                    break;
                 }
             }
+            closeAndReconnect();
         } catch (IOException e) {
             e.printStackTrace();
             closeAndReconnect();
@@ -150,17 +163,36 @@ public class Network {
         }
     }
 
-    private void sendMessage(String message) {
-        if (writer == null) {
-            return;
-        }
+    private void sendImgToServer(Bitmap bitmap) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 40, byteArrayOutputStream);
+        byte[] data = byteArrayOutputStream.toByteArray();
+
+        sendDataToNetwork(0, data.length, data);
+    }
+
+    private void sendText(String text) {
+        byte[] data = (text).getBytes(StandardCharsets.UTF_8);
+        // write the message to the server with the header
+        sendDataToNetwork(1, data.length, data);
+    }
+
+    private void sendDataToNetwork(int type, int length, byte[] data) {
         try {
-            // write the message to the server
-            writer.write(message+"\n");
-            writer.flush();
+            if (socket == null) return;
+            OutputStream outputStream = socket.getOutputStream();
+
+            outputStream.write(type);
+            outputStream.write(ByteBuffer.allocate(4).putInt(data.length).array());
+            outputStream.write(data);
+
+            outputStream.flush();
         } catch (IOException e) {
             e.printStackTrace();
             closeAndReconnect();
+            if (mlistener != null) {
+                mlistener.onSendError();
+            }
         }
     }
 

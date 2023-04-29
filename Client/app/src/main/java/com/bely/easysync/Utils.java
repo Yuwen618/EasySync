@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.media.MediaScannerConnection;
+import android.net.Uri;
 import android.os.Environment;
 import android.widget.Toast;
 
@@ -16,6 +17,7 @@ import java.util.List;
 public class Utils {
 
     private static Bitmap mClickedBmp;
+    private static Uri mClickedImgUri;
     public static List<MsgItem> mDataList = new ArrayList<>();
 
     public static String getSavedIP() {
@@ -42,6 +44,7 @@ public class Utils {
         public int type;
         public Bitmap img;
         public boolean sent;
+        public Object obj;
     }
 
     public static void saveImg(Bitmap bmp) {

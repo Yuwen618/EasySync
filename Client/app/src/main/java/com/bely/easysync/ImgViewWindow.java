@@ -38,18 +38,22 @@ public class ImgViewWindow extends PopupWindow {
         mImgView.setImageBitmap(Utils.getBitmapClicked());
 
         ImageView btnsave = contentView.findViewById(R.id.savebutton);
-        btnsave.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Utils.saveImg(Utils.getBitmapClicked());
-            }
-        });
+        if (Utils.getBitmapClicked() != null) {
+            btnsave.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Utils.saveImg(Utils.getBitmapClicked());
+                }
+            });
+        } else {
+            btnsave.setVisibility(View.INVISIBLE);
+        }
 
         mImgView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                ((MainActivity)context).exitFulLScreen();
-                dismiss();
+                //((MainActivity)context).exitFulLScreen();
+                //dismiss();
             }
         });
 
